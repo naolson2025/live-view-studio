@@ -2,11 +2,14 @@ defmodule LiveViewStudioWeb.LightLive do
   use LiveViewStudioWeb, :live_view
 
   def mount(_params, _session, socket) do
+    IO.inspect(self(), label: "MOUNT")
     socket = assign(socket, brightness: 10)
     {:ok, socket}
   end
 
   def render(assigns) do
+    IO.inspect(self(), label: "RENDER")
+
     ~H"""
     <h1>Front Porch Light</h1>
     <div id="light">
@@ -30,11 +33,21 @@ defmodule LiveViewStudioWeb.LightLive do
       <button phx-click="fire">
         <img src="/images/fire.svg" />
       </button>
+      <form phx-change="slide">
+        <input type="range" min="0" max="100" name="brightness" value={@brightness} />
+      </form>
     </div>
     """
   end
 
+  def handle_event("slide", params, socket) do
+    brightness = params["brightness"]
+    socket = assign(socket, brightness: brightness)
+    {:noreply, socket}
+  end
+
   def handle_event("on", _params, socket) do
+    IO.inspect(self(), label: "HANDLE EVENT ON")
     {:noreply, assign(socket, brightness: 100)}
   end
 
