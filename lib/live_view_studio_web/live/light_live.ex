@@ -3,7 +3,7 @@ defmodule LiveViewStudioWeb.LightLive do
 
   def mount(_params, _session, socket) do
     IO.inspect(self(), label: "MOUNT")
-    socket = assign(socket, brightness: 10)
+    socket = assign(socket, brightness: 10, color: "3000")
     {:ok, socket}
   end
 
@@ -14,7 +14,7 @@ defmodule LiveViewStudioWeb.LightLive do
     <h1>Front Porch Light</h1>
     <div id="light">
       <div class="meter">
-        <span style={"width: #{@brightness}%"}>
+        <span style={"width: #{@brightness}%; background: #{temp_color(@color)}"}>
           <%= @brightness %>%
         </span>
       </div>
@@ -34,10 +34,32 @@ defmodule LiveViewStudioWeb.LightLive do
         <img src="/images/fire.svg" />
       </button>
       <form phx-change="slide">
-        <input type="range" min="0" max="100" name="brightness" value={@brightness} />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          name="brightness"
+          value={@brightness}
+        />
+      </form>
+      <form phx-change="radio">
+        <div class="temps">
+          <%= for temp <- ["3000", "4000", "5000"] do %>
+            <div>
+              <input type="radio" id={temp} name="temp" value={temp} checked={temp == @color} />
+              <label for={temp}><%= temp %></label>
+            </div>
+          <% end %>
+        </div>
       </form>
     </div>
     """
+  end
+
+  def handle_event("radio", params, socket) do
+    temp = params["temp"]
+    socket = assign(socket, color: temp)
+    {:noreply, socket}
   end
 
   def handle_event("slide", params, socket) do
@@ -72,4 +94,8 @@ defmodule LiveViewStudioWeb.LightLive do
     brightness = Enum.random(0..100)
     {:noreply, assign(socket, brightness: brightness)}
   end
+
+  defp temp_color("3000"), do: "#F1C40D"
+  defp temp_color("4000"), do: "#FEFF66"
+  defp temp_color("5000"), do: "#99CCFF"
 end
