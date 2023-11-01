@@ -8,6 +8,10 @@ defmodule LiveViewStudioWeb.BingoLive do
         numbers: all_numbers()
       )
 
+    if connected?(socket) do
+      :timer.send_interval(3000, self(), :pick_number)
+    end
+
     {:ok, socket}
   end
 
@@ -20,6 +24,10 @@ defmodule LiveViewStudioWeb.BingoLive do
       </div>
     </div>
     """
+  end
+
+  def handle_info(:pick_number, socket) do
+    {:noreply, pick(socket)}
   end
 
   # Assigns the next random bingo number, removing it
