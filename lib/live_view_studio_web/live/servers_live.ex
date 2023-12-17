@@ -9,11 +9,23 @@ defmodule LiveViewStudioWeb.ServersLive do
     socket =
       assign(socket,
         servers: servers,
-        selected_server: hd(servers),
         coffees: 0
       )
 
     {:ok, socket}
+  end
+
+  # if the user navigates to /servers?id=123, then this function will be called
+  # with params = %{"id" => "123"}
+  # we'll then update the socket with the selected server
+  def handle_params(%{"id" => id}, _uri, socket) do
+    server = Servers.get_server!(String.to_integer(id))
+
+    {:noreply, assign(socket, selected_server: server, page_title: server.name)}
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, assign(socket, selected_server: hd(socket.assigns.servers))}
   end
 
   def render(assigns) do
@@ -22,13 +34,14 @@ defmodule LiveViewStudioWeb.ServersLive do
     <div id="servers">
       <div class="sidebar">
         <div class="nav">
-          <a
+          <.link
             :for={server <- @servers}
+            patch={~p"/servers?#{[id: server]}"}
             class={if server == @selected_server, do: "selected"}
           >
             <span class={server.status}></span>
             <%= server.name %>
-          </a>
+          </.link>
         </div>
         <div class="coffees">
           <button phx-click="drink">
@@ -64,7 +77,11 @@ defmodule LiveViewStudioWeb.ServersLive do
               </blockquote>
             </div>
           </div>
-          <div class="links"></div>
+          <div class="links">
+            <.link navigate={~p"/light"}>
+              Adjust Lights
+            </.link>
+          </div>
         </div>
       </div>
     </div>
