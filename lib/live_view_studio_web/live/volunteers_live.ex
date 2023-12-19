@@ -2,18 +2,14 @@ defmodule LiveViewStudioWeb.VolunteersLive do
   use LiveViewStudioWeb, :live_view
 
   alias LiveViewStudio.Volunteers
-  alias LiveViewStudio.Volunteers.Volunteer
+  alias LiveViewStudioWeb.VolunteerFormComponent
 
   def mount(_params, _session, socket) do
     volunteers = Volunteers.list_volunteers()
 
-    changeset = Volunteers.change_volunteer(%Volunteer{})
-
     socket =
-      assign(socket,
-        volunteers: volunteers,
-        form: to_form(changeset)
-      )
+      socket
+      |> stream(:volunteers, volunteers)
 
     {:ok, socket}
   end
@@ -22,45 +18,42 @@ defmodule LiveViewStudioWeb.VolunteersLive do
     ~H"""
     <h1>Volunteer Check-In</h1>
     <div id="volunteer-checkin">
-      <.form for={@form} phx-submit="save">
-        <.input field={@form[:name]} placeholder="name" autocomplete="off" />
-        <.input
-          field={@form[:phone]}
-          type="tel"
-          placeholder="Phone"
-          autocomplete="off"
+      <.live_component module={VolunteerFormComponent} id={:new} />
+      <div id="volunteers" phx-update="stream">
+        <.volunteer
+          :for={{volunteer_id, volunteer} <- @streams.volunteers}
+          volunteer={volunteer}
+          id={volunteer_id}
         />
-        <.button phx-disable-with="Saving...">Check In</.button>
-      </.form>
-      <div
-        :for={volunteer <- @volunteers}
-        class={"volunteer #{if volunteer.checked_out, do: "out"}"}
-      >
-        <div class="name">
-          <%= volunteer.name %>
-        </div>
-        <div class="phone">
-          <%= volunteer.phone %>
-        </div>
-        <div class="status">
-          <button>
-            <%= if volunteer.checked_out, do: "Check In", else: "Check Out" %>
-          </button>
-        </div>
       </div>
     </div>
     """
   end
 
-  def handle_event("save", %{"volunteer" => volunteer_params}, socket) do
-    case Volunteers.create_volunteer(volunteer_params) do
-      {:ok, volunteer} ->
-        socket = update(socket, :volunteers, &([volunteer | &1]))
-        changeset = Volunteers.change_volunteer(%Volunteer{})
-        {:noreply, assign(socket, form: to_form(changeset))}
+  def volunteer(assigns) do
+    ~H"""
+    <div
+      class={"volunteer #{if @volunteer.checked_out, do: "out"}"}
+      id={@id}
+    >
+      <div class="name">
+        <%= @volunteer.name %>
+      </div>
+      <div class="phone">
+        <%= @volunteer.phone %>
+      </div>
+      <div class="status">
+        <button phx-click="toggle-status" phx-value-id={@volunteer.id}>
+          <%= if @volunteer.checked_out,
+            do: "Check In",
+            else: "Check Out" %>
+        </button>
+      </div>
+    </div>
+    """
+  end
 
-      {:error, changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
-    end
+  def handle_info({:volunteer_created, volunteer}, socket) do
+    {:noreply, stream_insert(socket, :volunteers, volunteer, at: 0)}
   end
 end
