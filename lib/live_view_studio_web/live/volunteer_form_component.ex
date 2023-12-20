@@ -10,9 +10,24 @@ defmodule LiveViewStudioWeb.VolunteerFormComponent do
     {:ok, assign(socket, :form, to_form(changeset))}
   end
 
+  # this is called automatically if not defined
+  # and it will merge all assigns from the parent LiveView to the component
+  # we can use it to update the state before rendering
+  def update(assigns, socket) do
+    socket =
+      socket
+      |> assign(assigns)
+      |> assign(:count, assigns.count + 1)
+
+    {:ok, socket}
+  end
+
   def render(assigns) do
     ~H"""
     <div>
+      <div class="count">
+        Go for it! You'll be number: <%= @count %>
+      </div>
       <.form
         for={@form}
         phx-submit="save"
@@ -38,15 +53,6 @@ defmodule LiveViewStudioWeb.VolunteerFormComponent do
     """
   end
 
-  def handle_event("toggle-status", %{"id" => id}, socket) do
-    volunteer = Volunteers.get_volunteer!(id)
-
-    {:ok, volunteer} =
-      Volunteers.update_volunteer(volunteer, %{checked_out: !volunteer.checked_out})
-
-    {:noreply, stream_insert(socket, :volunteers, volunteer)}
-  end
-
   def handle_event("validate", %{"volunteer" => volunteer_params}, socket) do
     changeset =
       %Volunteer{}
@@ -58,12 +64,17 @@ defmodule LiveViewStudioWeb.VolunteerFormComponent do
   end
 
   def handle_event("save", %{"volunteer" => volunteer_params}, socket) do
+    # we added a publish message inside the Volunteers.create_volunteer function
+    # that will broadcast the new volunteer to all subscribers
+    # so all browsers will receive the new volunteer & update the list
     case Volunteers.create_volunteer(volunteer_params) do
-      {:ok, volunteer} ->
+      {:ok, _volunteer} ->
         # socket = update(socket, :volunteers, &[volunteer | &1])
         # insert volunteer at the top of the list (index 0)
         # socket = stream_insert(socket, :volunteers, volunteer, at: 0)
-        send(self(), {:volunteer_created, volunteer})
+        # no longer need to send message to the parent component
+        # bc we are broadcasting the message from the Volunteers.create_volunteer function
+        # send(self(), {:volunteer_created, volunteer})
         changeset = Volunteers.change_volunteer(%Volunteer{})
         {:noreply, assign(socket, form: to_form(changeset))}
 
