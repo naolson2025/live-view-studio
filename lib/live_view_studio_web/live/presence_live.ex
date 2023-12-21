@@ -9,6 +9,7 @@ defmodule LiveViewStudioWeb.PresenceLive do
     %{current_user: current_user} = socket.assigns
 
     if connected?(socket) do
+      Phoenix.PubSub.subscribe(LiveViewStudio.PubSub, @topic)
       # track can take any PID and track any process, not only users
       # but we're using it to track users here, by providing self
       {:ok, _} =
@@ -61,6 +62,38 @@ defmodule LiveViewStudioWeb.PresenceLive do
 
   def handle_event("toggle-playing", _, socket) do
     socket = update(socket, :is_playing, fn playing -> !playing end)
+
+    %{current_user: current_user} = socket.assigns
+
+    %{metas: [meta | _]} = Presence.get_by_key(@topic, current_user.id)
+
+    new_meta = %{meta | is_playing: socket.assigns.is_playing}
+
+    Presence.update(self(), @topic, current_user.id, new_meta)
+
     {:noreply, socket}
+  end
+
+  def handle_info(%{event: "presence_diff", payload: diff}, socket) do
+    socket =
+      socket
+      |> remove_presences(diff.leaves)
+      |> add_presences(diff.joins)
+
+    {:noreply, socket}
+  end
+
+  defp remove_presences(socket, leaves) do
+    user_ids = Enum.map(leaves, fn {user_id, _} -> user_id end)
+
+    presences = Map.drop(socket.assigns.presences, user_ids)
+
+    assign(socket, :presences, presences)
+  end
+
+  defp add_presences(socket, joins) do
+    presences = Map.merge(socket.assigns.presences, format_presences(joins))
+
+    assign(socket, :presences, presences)
   end
 end
