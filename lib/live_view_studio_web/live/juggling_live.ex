@@ -16,10 +16,16 @@ defmodule LiveViewStudioWeb.JugglingLive do
      )}
   end
 
+  # phx-window-keyup="update" sends an event whenever a key is released
+  # anywhere in the window. This is a good way to capture global key events
+  # generally better than phx-keydown
+  # phx-keyup="set-current" without 'window' will only send events when the
+  # specific html element has focus and a key is pressed
+  # by adding phx-key="Enter" only the enter key will trigger the event
   def render(assigns) do
     ~H"""
     <h1>Juggling Key Events</h1>
-    <div id="juggling">
+    <div id="juggling" phx-window-keyup="update">
       <div class="legend">
         k = play/pause, &larr; = previous, &rarr; = next
       </div>
@@ -31,7 +37,12 @@ defmodule LiveViewStudioWeb.JugglingLive do
           <%= Enum.at(@images, @current) %>
         </div>
 
-        <input type="number" value={@current} />
+        <input
+          type="number"
+          value={@current}
+          phx-keyup="set-current"
+          phx-key="Enter"
+        />
 
         <button phx-click="toggle-playing">
           <%= if @is_playing, do: "Pause", else: "Play" %>
@@ -39,6 +50,28 @@ defmodule LiveViewStudioWeb.JugglingLive do
       </div>
     </div>
     """
+  end
+
+  def handle_event("set-current", %{"key" => "Enter", "value" => value}, socket) do
+    {:noreply, assign(socket, :current, String.to_integer(value))}
+  end
+
+  # phx-keyup sends this event and then we match on the key press of 'k'
+  def handle_event("update", %{"key" => "k"}, socket) do
+    {:noreply, toggle_playing(socket)}
+  end
+
+  def handle_event("update", %{"key" => "ArrowRight"}, socket) do
+    {:noreply, assign(socket, :current, next(socket))}
+  end
+
+  def handle_event("update", %{"key" => "ArrowLeft"}, socket) do
+    {:noreply, assign(socket, :current, previous(socket))}
+  end
+
+  # cath all other key events
+  def handle_event("update", _, socket) do
+    {:noreply, socket}
   end
 
   def handle_event("toggle-playing", _, socket) do

@@ -8,20 +8,22 @@ defmodule LiveViewStudioWeb.BookingsLive do
     {:ok,
      assign(socket,
        bookings: Bookings.list_bookings(),
-       selected_dates: %{
-         from: Bookings.add_days(1),
-         to: Bookings.add_days(3)
-       }
+       selected_dates: nil
      )}
   end
 
+  # The JS hook for the Calendar can be found in assets > js > app.js
+  # phx-update="ignore" is used to prevent the calendar from being re-rendered
+  # because JS is controlling the calendar we don't want the server to re-render it
   def render(assigns) do
     ~H"""
     <h1>Bookings</h1>
     <div id="bookings">
-      <div id="booking-calendar">
-        <div class="placeholder">
-          calendar here
+      <div id="wrapper" phx-update="ignore">
+        <div
+          id="booking-calendar"
+          phx-hook="Calendar"
+        >
         </div>
       </div>
       <div :if={@selected_dates} class="details">
@@ -48,6 +50,15 @@ defmodule LiveViewStudioWeb.BookingsLive do
     """
   end
 
+  def handle_event("unavailable-dates", _, socket) do
+    {:reply, %{dates: socket.assigns.bookings}, socket}
+  end
+
+  # this event is received from the JS hook in assets > js > app.js
+  def handle_event("dates-picked", [from, to], socket) do
+    {:noreply, assign(socket, selected_dates: %{from: parse_date(from), to: parse_date(to)})}
+  end
+
   def handle_event("book-selected-dates", _, socket) do
     %{selected_dates: selected_dates, bookings: bookings} = socket.assigns
 
@@ -55,6 +66,8 @@ defmodule LiveViewStudioWeb.BookingsLive do
       socket
       |> assign(:bookings, [selected_dates | bookings])
       |> assign(:selected_dates, nil)
+      # send the newly booked dates to the JS hook so it can cross them out
+      |> push_event("add-unavailable-dates", selected_dates)
 
     {:noreply, socket}
   end
