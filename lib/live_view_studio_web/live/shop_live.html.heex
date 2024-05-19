@@ -57,6 +57,11 @@
           <span class="quantity">
             &times; <%= quantity %>
           </span>
+          <button phx-click={
+            JS.push("delete", value: %{product: product})
+          }>
+            <.icon name="hero-trash" />
+          </button>
         </li>
       </ul>
     </div>

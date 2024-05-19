@@ -18,6 +18,14 @@ defmodule LiveViewStudioWeb.ShopLive do
     {:noreply, assign(socket, :cart, cart)}
   end
 
+  def handle_event("delete", %{"product" => product}, socket) do
+    cart = case Map.get(socket.assigns.cart, product) do
+      1 -> Map.delete(socket.assigns.cart, product)
+      _ -> Map.update(socket.assigns.cart, product, 1, &(&1 - 1))
+    end
+    {:noreply, assign(socket, cart: cart)}
+  end
+
   def toggle_cart do
     JS.toggle(
       to: "#cart",
